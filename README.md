@@ -18,7 +18,7 @@ https://rustwasm.github.io/book/introduction.html
     name: String;
     runs: {
         distance: u32;
-        duration: u32; 
+        duration: u32;
     }[]
 }[]
 ```
