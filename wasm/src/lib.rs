@@ -24,15 +24,17 @@ macro_rules! log {
 pub struct Run {
     distance: u32,
     duration: u32,
+    name: String,
 }
 
 #[wasm_bindgen]
 impl Run {
-    pub fn new(distance: u32, duration: u32) -> JsValue {
+    pub fn new(distance: u32, duration: u32, name: String) -> JsValue {
         utils::set_panic_hook();
         let run = Run {
             distance,
-            duration
+            duration,
+            name
         };
         JsValue::from_serde(&run).unwrap()
     }
@@ -41,17 +43,15 @@ impl Run {
 #[wasm_bindgen]
 #[derive(Serialize, Deserialize)]
 pub struct Person {
-    name: String,
     runs: Vec<Run>,
 }
 
 #[wasm_bindgen]
 impl Person {
-    pub fn new(name: String, value_runs: &JsValue) -> JsValue {
+    pub fn new(value_runs: &JsValue) -> JsValue {
         utils::set_panic_hook();
         let runs: Vec<Run> = value_runs.into_serde().unwrap();
         let person = Person {
-            name,
             runs,
         };
         JsValue::from_serde(&person).unwrap()
@@ -60,9 +60,10 @@ impl Person {
 
 #[wasm_bindgen]
 #[derive(Serialize, Deserialize)]
-pub struct Result {
-    name: String,
-    run: Run,
+pub struct RelayRace {
+    distance: u32,
+    duration: u32,
+    runs: Vec<Run>,
 }
 
 
@@ -77,28 +78,63 @@ pub fn print_run(val: &JsValue) {
 pub fn print_person(val: &JsValue) {
     let example: Person = val.into_serde().unwrap();
     log!("Person 1: runs {}", example.runs.len());
-    log!("Person 1: name {}", example.name);
 }
 
 #[wasm_bindgen]
-pub fn calculate(val: &JsValue) -> JsValue {
+pub fn calculate(val: &JsValue, distance: u32) -> JsValue {
     utils::set_panic_hook();
     let persons: Vec<Person> = val.into_serde().unwrap();
-    let mut result_vector: Vec<Result> = Vec::new();
+    let mut fastestRelayRace: RelayRace;
 
     log!("len: {}", persons.len());
+    log!("distance: {}", distance);
 
-    for i in persons {
-        let run_fast: Run = Run {
-            distance: i.runs[0].distance,
-            duration: i.runs[0].duration,
-        };
-        let res = Result {
-            name: i.name,
-            run: run_fast,
-        };
-        result_vector.push(res);
+    JsValue::from_serde(&fastestRelayRace).unwrap()
+}
+
+fn addRun(remainingPersons: Vec<Person>, currentRuns: Vec<Run>, distance: u32) {
+    if remainingPersons.is_empty() {
+        let currentRelayRace: RelayRace = calculateRelayRace(currentRuns);
+        if (currentRelayRace.distance == distance && (fastestRelayRace || fastestRelayRace.duration > currentRelayRace.duration)) {
+            fastestRelayRace = currentRelayRace;
+        }
+        let me = remainingPersons.pop();
+        if me.is_some() {
+            for currentRun in me.unwrap().runs {
+                let withThisRun = currentRuns.to_vec().push(currentRun);
+
+                addRun(remainingPersons, withThisRun, distance);
+            }
+        }
+    }
+}
+
+fn calculateRelayRace(runs: Vec<Run>) -> RelayRace {
+    let mut distance: u32 = 0;
+    let mut duration: u32 = 0;
+    for run in runs {
+        distance += run.distance;
+        duration += run.duration;
+    }
+    RelayRace {
+        distance,
+        duration,
+        runs
+    }
+}
+
+/*
+gesamtZeit(restPersonen: Person[], currentRuns: Run[], distance: int) {
+    if (restPersonen.length === 0) {
+        relayRace = runRelayRace(andereLäufe);
+        if (relayRace.distance === distance && isFastestLauf) {
+            optimalerLauf = lauf;
+        }
     }
 
-    JsValue::from_serde(&result_vector).unwrap()
+    me = restpersonen.pop();
+    for (run in me.runs) {
+        gesamtZeit(restpersonen, [ ...andereLäufe, run ], distance);
+    }
 }
+*/
